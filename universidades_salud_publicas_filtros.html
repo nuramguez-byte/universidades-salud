@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang='es'>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>Universidades públicas - Grados de Ciencias de la Salud (España)</title>
+<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css' crossorigin=''/>
+<style>
+:root{--accent:#2b7a78;--muted:#6c757d;--card-bg:#ffffff;--panel-bg:#f8f9fa}
+body{margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
+.header{padding:16px;background:linear-gradient(90deg,var(--accent),#117a65);color:white}
+.container{display:flex;flex-direction:row;gap:12px;padding:12px}
+.left{flex:1;min-width:360px}
+.right{width:360px;background:var(--panel-bg);padding:12px;border-left:1px solid #e6e6e6;overflow:auto;height:78vh}
+#map{height:78vh;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.08)}
+.controls{margin-bottom:12px}
+.degree-list{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;padding:6px;max-height:220px;overflow:auto;background:white;border-radius:6px;border:1px solid #e9ecef;padding:8px}
+.card{background:var(--card-bg);border-radius:8px;padding:8px;margin-bottom:8px;display:flex;gap:8px;align-items:center;border:1px solid #e9ecef}
+.logo{width:48px;height:48px;border-radius:6px;background:#e9ecef;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:700}
+.card-body{flex:1}
+.card a{color:var(--accent);text-decoration:none;font-weight:600}
+.filter-actions{display:flex;gap:8px;margin-top:8px}
+.footer-note{font-size:12px;color:var(--muted);margin-top:12px}
+@media (max-width:900px){.container{flex-direction:column} .right{width:100%;height:360px} #map{height:50vh}}
+</style>
+</head>
+<body>
+<div class='header'>
+  <h1 style='margin:0;font-size:20px'>Mapa: universidades públicas con amplia oferta en Ciencias de la Salud</h1>
+  <p style='margin:4px 0 0 0;opacity:0.9'>Filtra por titulación para ver qué universidades la imparten. Puedes publicar este HTML en GitHub Pages para que sea público.</p>
+</div>
+<div class='container'>
+  <div class='left'>
+    <div class='controls card'>
+      <div style='flex:1'>
+        <strong>Filtrar por titulación</strong>
+        <div class='degree-list' id='degreeList'></div>
+        <div class='filter-actions'>
+          <button id='selectAll'>Seleccionar todo</button>
+          <button id='clearAll'>Limpiar</button>
+        </div>
+      </div>
+    </div>
+    <div id='map'></div>
+    <div class='footer-note'>Consejo visual: añade logos reales (sustituye los placeholders en las tarjetas) y usa iconos distintos para cada grupo de titulaciones.</div>
+  </div>
+  <aside class='right' id='sidebar'>
+    <h3 style='margin-top:0'>Universidades destacadas</h3>
+    <div id='cards'></div>
+    <div style='margin-top:12px' class='card'>
+      <div style='flex:1'>
+        <strong>Cómo publicar públicamente</strong>
+        <p style='margin:6px 0 0 0;font-size:13px;color:var(--muted)'>Sigue estos pasos: 1) Crea un repositorio público en GitHub; 2) Sube este archivo HTML; 3) Activa GitHub Pages (branch main / root). Luego pega el enlace público en Google Sites con &lt;iframe&gt;.</p>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' crossorigin=''></script>
+<script>
+const degrees = ["Medicina", "Enfermería", "Podología", "Veterinaria", "Odontología", "Biología sanitaria", "Biomedicina", "Biotecnología", "Bioingeniería", "Fisioterapia", "Terapia ocupacional", "C.A.FyD", "Farmacia", "Nutrición", "Óptica y Optometría", "Logopedia"];
+const universities = [{"name": "Universidad Complutense de Madrid", "abbr": "UCM", "lat": 40.449, "lon": -3.7275, "url": "https://www.ucm.es/", "degrees": ["Medicina", "Enfermería", "Odontología", "Farmacia", "Fisioterapia", "Óptica y Optometría", "Nutrición", "Logopedia", "Biomedicina", "Biotecnología"]}, {"name": "Universidad de Barcelona", "abbr": "UB", "lat": 41.3869, "lon": 2.17, "url": "https://www.ub.edu/", "degrees": ["Medicina", "Enfermería", "Odontología", "Biología sanitaria", "Biomedicina", "Biotecnología", "Bioingeniería", "Fisioterapia", "Nutrición", "C.A.FyD"]}, {"name": "Universidad de Valencia", "abbr": "UV", "lat": 39.4811, "lon": -0.34, "url": "https://www.uv.es/", "degrees": ["Medicina", "Enfermería", "Odontología", "Farmacia", "Fisioterapia", "Óptica y Optometría", "Nutrición", "Biotecnología", "C.A.FyD"]}, {"name": "Universidad de Granada", "abbr": "UGR", "lat": 37.1882, "lon": -3.6067, "url": "https://www.ugr.es/", "degrees": ["Medicina", "Enfermería", "Odontología", "Farmacia", "Fisioterapia", "Nutrición", "Logopedia", "Biomedicina", "Biotecnología"]}, {"name": "Universidad de Sevilla", "abbr": "US", "lat": 37.3886, "lon": -5.9953, "url": "https://www.us.es/", "degrees": ["Medicina", "Enfermería", "Fisioterapia", "Podología", "Óptica y Optometría", "Nutrición", "Logopedia"]}, {"name": "Universidad de Córdoba", "abbr": "UCO", "lat": 37.8882, "lon": -4.7794, "url": "https://www.uco.es/", "degrees": ["Medicina", "Enfermería", "Veterinaria", "Biología sanitaria", "Nutrición", "Fisioterapia"]}, {"name": "Universidad de Zaragoza", "abbr": "UNIZAR", "lat": 41.6561, "lon": -0.8773, "url": "https://www.unizar.es/", "degrees": ["Medicina", "Enfermería", "Veterinaria", "Fisioterapia", "Nutrición", "Biotecnología"]}, {"name": "Universitat Autònoma de Barcelona", "abbr": "UAB", "lat": 41.506, "lon": 2.1319, "url": "https://www.uab.cat/", "degrees": ["Enfermería", "Biología sanitaria", "Biomedicina", "Biotecnología", "Bioingeniería", "Nutrición"]}, {"name": "Universidad Autónoma de Madrid", "abbr": "UAM", "lat": 40.5439, "lon": -3.6893, "url": "https://www.uam.es/", "degrees": ["Medicina", "Enfermería", "Biomedicina", "Biotecnología", "Fisioterapia"]}, {"name": "Universidad de Murcia", "abbr": "UMU", "lat": 37.987, "lon": -1.1295, "url": "https://www.um.es/", "degrees": ["Medicina", "Enfermería", "Fisioterapia", "Nutrición", "Biotecnología"]}, {"name": "Universidad de Oviedo", "abbr": "UO", "lat": 43.3609, "lon": -5.8448, "url": "https://www.uniovi.es/", "degrees": ["Medicina", "Enfermería", "Fisioterapia", "Veterinaria", "C.A.FyD"]}, {"name": "Universidad de Santiago de Compostela", "abbr": "USC", "lat": 42.8805, "lon": -8.5448, "url": "https://www.usc.gal/", "degrees": ["Medicina", "Odontología", "Farmacia", "Enfermería", "Nutrición", "Fisioterapia"]}, {"name": "Universidad de Castilla-La Mancha", "abbr": "UCLM", "lat": 39.0, "lon": -3.92, "url": "https://www.uclm.es/", "degrees": ["Enfermería", "Fisioterapia", "Podología", "Nutrición", "Biotecnología"]}, {"name": "Universidad Pública de Navarra", "abbr": "UPNA", "lat": 42.8056, "lon": -1.6466, "url": "https://www.upna.es/", "degrees": ["Medicina", "Enfermería", "Fisioterapia", "Nutrición"]}, {"name": "Universidad de Alcalá", "abbr": "UAH", "lat": 40.4818, "lon": -3.3634, "url": "https://www.uah.es/", "degrees": ["Enfermería", "Fisioterapia", "Nutrición"]}];
+
+// Crear lista de checkboxes
+
+const degreeList = document.getElementById('degreeList');
+degrees.forEach(d => {
+  const id = 'deg_' + d.replace(/[^a-z0-9]/gi,'_');
+  const wrapper = document.createElement('label');
+  wrapper.style.display='flex';
+  wrapper.style.alignItems='center';
+  wrapper.style.gap='6px';
+  wrapper.innerHTML = `<input type="checkbox" id="${id}" data-degree="${d}"> <span style="font-size:13px">${d}</span>`;
+  degreeList.appendChild(wrapper);
+});
+
+document.getElementById('selectAll').addEventListener('click', ()=>{ document.querySelectorAll('#degreeList input[type=checkbox]').forEach(cb=>cb.checked=true); updateFilters(); });
+document.getElementById('clearAll').addEventListener('click', ()=>{ document.querySelectorAll('#degreeList input[type=checkbox]').forEach(cb=>cb.checked=false); updateFilters(); });
+
+var map = L.map('map').setView([40.2, -3.7], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap contributors'}).addTo(map);
+
+const markers = [];
+const colors = ['#2b7a78','#117a65','#ff7f50','#6a5acd','#ffb347','#4caf50','#f06292','#00897b','#3949ab','#d32f2f'];
+
+function colorForUni(index) { return colors[index % colors.length]; }
+function makeIcon(color){
+  return L.divIcon({className:'custom-marker', html:`<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 24 24"><path fill="${color}" d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7z"/><circle cx="12" cy="9" r="2.2" fill="white"/></svg>` , iconSize:[28,36], iconAnchor:[14,36]});
+}
+
+const cardsDiv = document.getElementById('cards');
+universities.forEach((u, idx) => {
+  const icon = makeIcon(colorForUni(idx));
+  const m = L.marker([u.lat, u.lon], {icon: icon}).addTo(map);
+  const popupHtml = `<b>${u.name} (${u.abbr})</b><br><a href="${u.url}" target="_blank">Sitio web</a><br><em>Titulaciones (muestra):</em><ul>` + u.degrees.slice(0,8).map(dd=>`<li>${dd}</li>`).join('') + `</ul>`;
+  m.bindPopup(popupHtml);
+  markers.push({marker:m, uni:u});
+
+  const card = document.createElement('div');
+  card.className='card';
+  const logo = document.createElement('div');
+  logo.className='logo';
+  logo.textContent = u.abbr;
+  const body = document.createElement('div');
+  body.className='card-body';
+  body.innerHTML = `<a href="${u.url}" target="_blank">${u.name}</a><div style="font-size:13px;color:var(--muted);margin-top:6px">Titulaciones: ${u.degrees.slice(0,6).join(', ')}${u.degrees.length>6? '...':''}</div>`;
+  card.appendChild(logo); card.appendChild(body);
+  card.addEventListener('click', ()=>{ map.setView([u.lat,u.lon], 13); markers[idx].marker.openPopup(); });
+  cardsDiv.appendChild(card);
+});
+
+function updateFilters(){
+  const checked = Array.from(document.querySelectorAll('#degreeList input[type=checkbox]:checked')).map(cb=>cb.dataset.degree);
+  if(checked.length===0){
+    markers.forEach(m=>{ if(!map.hasLayer(m.marker)) m.marker.addTo(map); });
+    return;
+  }
+  markers.forEach(m=>{
+    const has = m.uni.degrees.some(d=> checked.includes(d));
+    if(has){ if(!map.hasLayer(m.marker)) m.marker.addTo(map); } else { if(map.hasLayer(m.marker)) map.removeLayer(m.marker); }
+  });
+}
+
+document.querySelectorAll('#degreeList input[type=checkbox]').forEach(cb=>cb.addEventListener('change', updateFilters));
+document.querySelectorAll('#degreeList input[type=checkbox]').forEach(cb=>{ if(cb.dataset.degree==='Medicina' || cb.dataset.degree==='Enfermería') cb.checked=true; });
+updateFilters();
+
+</script>
+</body>
+</html>
